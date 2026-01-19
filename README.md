@@ -6,68 +6,51 @@ A complete containerized Apache Spark cluster with Jupyter notebooks, Scala supp
 
 ```mermaid
 graph TB
-    subgraph "Docker Bridge Network: spark-jupyter-scala_spark-net"
-        subgraph "Subnet: 172.25.0.0/16"
-            SM[("Spark Master&lt;br/&gt;spark-master&lt;br/&gt;172.25.0.2&lt;br/&gt;Ports: 7077, 8080")]
-            SW1[("Spark Worker 1&lt;br/&gt;spark-worker-1&lt;br/&gt;172.25.0.3&lt;br/&gt;Port: 8081")]
-            SW2[("Spark Worker 2&lt;br/&gt;spark-worker-2&lt;br/&gt;172.25.0.4&lt;br/&gt;Port: 8082")]
-            LV[("Livy Server&lt;br/&gt;livy-server&lt;br/&gt;172.25.0.5&lt;br/&gt;Port: 8998")]
-            JP[("Jupyter Lab&lt;br/&gt;jupyter-spark&lt;br/&gt;172.25.0.6&lt;br/&gt;Port: 8888, 4040")]
+    subgraph "HTTPS Reverse Proxy Setup"
+        subgraph "Nginx Proxy (Port 443)"
+            NGINX[("Nginx Proxy<br/>nginx-proxy<br/>Handles SSL termination<br/>Path-based routing")]
+        end
+        
+        subgraph "Docker Network: ${NETWORK_NAME}"
+            SM[("Spark Master<br/>${SERVICE_2_NAME}<br/>${SERVICE_2_PORT}")]
+            JP[("Jupyter Lab<br/>${SERVICE_1_NAME}<br/>${SERVICE_1_PORT}")]
         end
     end
 
-    subgraph "External Access (Host Network)"
-        H1[("Host Machine&lt;br/&gt;localhost:8080&lt;br/&gt;Spark Master UI")]
-        H2[("Host Machine&lt;br/&gt;localhost:8081&lt;br/&gt;Worker 1 UI")]
-        H3[("Host Machine&lt;br/&gt;localhost:8082&lt;br/&gt;Worker 2 UI")]
-        H4[("Host Machine&lt;br/&gt;localhost:8998&lt;br/&gt;Livy Server")]
-        H5[("Host Machine&lt;br/&gt;localhost:8888/lab&lt;br/&gt;Jupyter Lab")]
-        H6[("Host Machine&lt;br/&gt;localhost:4040&lt;br/&gt;Spark App UI")]
+    subgraph "External HTTPS Access"
+        USER[("User/Browser<br/>https://your-domain/")]
+        H1[("Spark UI<br/>https://your-domain/spark/")]
+        H2[("Jupyter UI<br/>https://your-domain/jupyter/")]
     end
 
-    subgraph "Data & Configuration"
-        V1[("./data&lt;br/&gt;Shared Data")]
-        V2[("./notebooks&lt;br/&gt;Jupyter Notebooks")]
-        V3[("./config&lt;br/&gt;Configuration Files")]
+    subgraph "Internal Services"
+        S1[("Service 1<br/>${SERVICE_1_PATH}")]
+        S2[("Service 2<br/>${SERVICE_2_PATH}")]
     end
 
-    subgraph "Internal Communication Flow"
-        JP -.-&gt;|HTTP:8998| LV
-        LV -.-&gt;|spark://master:7077| SM
-        SW1 -.-&gt;|spark://master:7077| SM
-        SW2 -.-&gt;|spark://master:7077| SM
-        JP -.-&gt;|spark://master:7077| SM
-    end
+    %% Main flow
+    USER -->|HTTPS| NGINX
+    NGINX -->|/spark/| H1
+    NGINX -->|/jupyter/| H2
+    
+    %% Proxy routing
+    NGINX -->|proxy_pass| SM
+    NGINX -->|proxy_pass| JP
+    
+    %% URL rewriting
+    SM -.->|sub_filter| S1
+    JP -.->|sub_filter| S2
 
-    %% External access mappings
-    SM --&gt;|Port 8080| H1
-    SW1 --&gt;|Port 8081| H2
-    SW2 --&gt;|Port 8081| H3
-    LV --&gt;|Port 8998| H4
-    JP --&gt;|Port 8888| H5
-    JP --&gt;|Port 4040| H6
+    classDef proxyNode fill:#4CAF50,stroke:#388E3C,color:#fff
+    classDef serviceNode fill:#FF9800,stroke:#F57C00,color:#fff
+    classDef userNode fill:#2196F3,stroke:#1976D2,color:#fff
+    classDef pathNode fill:#9C27B0,stroke:#7B1FA2,color:#fff
 
-    %% Volume connections
-    JP -.-&gt; V1
-    JP -.-&gt; V2
-    JP -.-&gt; V3
-    SM -.-&gt; V1
-    SW1 -.-&gt; V1
-    SW2 -.-&gt; V1
-    LV -.-&gt; V1
-
-    classDef sparkNode fill:#FF6B6B,stroke:#C92A2A,color:#fff
-    classDef jupyterNode fill:#4ECDC4,stroke:#15AABF,color:#fff
-    classDef networkBox fill:#45B7D1,stroke:#2C8FAF,color:#fff
-    classDef externalBox fill:#96CEB4,stroke:#74B49B,color:#000
-    classDef volumeBox fill:#FFEAA7,stroke:#DDAE51,color:#000
-
-    class SM,SW1,SW2 sparkNode
-    class JP jupyterNode
-    class LV sparkNode
-    class TB networkBox
-    class H1,H2,H3,H4,H5,H6 externalBox
-    class V1,V2,V3 volumeBox
+    class NGINX proxyNode
+    class SM,JP serviceNode
+    class USER userNode
+    class S1,S2 pathNode
+    class H1,H2 pathNode
 ```
 
  # 🏗️ Technology Stack
