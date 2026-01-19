@@ -1,0 +1,20 @@
+# Port of your service that will be proxied to 443
+APP_PORT=8888
+
+# Service name (container name) of your app
+APP_SERVICE_NAME=stroke-jupyter
+
+# Network name (already using the existing one)
+NETWORK_NAME=stroke-predict-spark-feast_stroke-network
+
+
+
+
+# Port of your service that will be proxied to 443
+APP_PORT=8080
+
+# Service name (container name) of your app
+APP_SERVICE_NAME=spark-master
+
+# Network name (already using the existing one)
+NETWORK_NAME=stroke-predict-spark-feast_stroke-network                                                         

@@ -1,0 +1,25 @@
+version: '3.8'
+
+services:
+  nginx-proxy:
+    image: nginx:alpine
+    container_name: nginx-proxy
+    ports:
+      - "443:443"
+    volumes:
+      - ./nginx.conf:/etc/nginx/conf.d/default.conf.template  # Use generated config as template
+      - ./ssl:/etc/nginx/ssl:ro
+    networks:
+      - stroke-network
+    restart: unless-stopped
+    environment:
+      - NGINX_HOST=localhost
+      - NGINX_PORT=443
+      - APP_PORT=${APP_PORT}
+      - APP_SERVICE_NAME=${APP_SERVICE_NAME}
+    command: /bin/sh -c "envsubst '$${APP_PORT}:$${APP_SERVICE_NAME}' < /etc/nginx/conf.d/default.conf.template > /etc/nginx/conf.d/default.conf && nginx -g 'daemon off;'"
+
+networks:
+  stroke-network:
+    external: true
+    name: ${NETWORK_NAME}
