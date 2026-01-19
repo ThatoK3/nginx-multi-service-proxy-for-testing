@@ -64,9 +64,9 @@ SERVICE_2_PORT=8080
 ```
 
 #### Each service needs:
-* **PATH*: URL path (e.g., /jupyter)
-* **NAME*: Docker service name
-* **PORT*: Internal port number
+* *PATH*: URL path (e.g., /jupyter)
+* *NAME*: Docker service name
+* *PORT*: Internal port number
 
 
 # How It Works
