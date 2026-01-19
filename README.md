@@ -1,310 +1,77 @@
-# 🚀 Spark Jupyter Scala Cluster
+# nginx-multi-service-proxy-for-testing
+A simple nginx reverse proxy setup for testing multiple services behind a single HTTPS endpoint. FOR TESTING ONLY - No security layers included.
 
-A complete containerized Apache Spark cluster with Jupyter notebooks, Scala support, and integrated development environment for big data analytics and machine learning.
+# ⚠️ NEVER USE IN PRODUCTION ⚠️
 
-## 📊 Architecture Overview
+# Description
+This repository provides a Docker-based nginx reverse proxy configuration that allows you to expose multiple services through a single HTTPS endpoint with path-based routing. Originally designed for testing Spark clusters and Jupyter notebooks in AWS environments.
 
+### Perfect for:
+* Development and testing environments
+* AWS EC2 instances for temporary testing
+* Multi-service application testing
+* Learning reverse proxy concepts
+
+# Architecture
 ```mermaid
 graph TB
-    subgraph "HTTPS Reverse Proxy Setup"
-        subgraph "Nginx Proxy (Port 443)"
-            NGINX[("Nginx Proxy<br/>nginx-proxy<br/>Handles SSL termination<br/>Path-based routing")]
+    subgraph "Internet"
+        USER[User/Browser]
+    end
+    
+    subgraph "AWS EC2 Instance"
+        subgraph "Docker Network"
+            NGINX[Nginx Proxy<br/>Port 443]
+            SVC1[Service 1<br/>Port 8080]
+            SVC2[Service 2<br/>Port 8888]
+            SVC3[Service 3<br/>Port 9000]
         end
-        
-        subgraph "Docker Network: ${NETWORK_NAME}"
-            SM[("Spark Master<br/>${SERVICE_2_NAME}<br/>${SERVICE_2_PORT}")]
-            JP[("Jupyter Lab<br/>${SERVICE_1_NAME}<br/>${SERVICE_1_PORT}")]
-        end
     end
-
-    subgraph "External HTTPS Access"
-        USER[("User/Browser<br/>https://your-domain/")]
-        H1[("Spark UI<br/>https://your-domain/spark/")]
-        H2[("Jupyter UI<br/>https://your-domain/jupyter/")]
-    end
-
-    subgraph "Internal Services"
-        S1[("Service 1<br/>${SERVICE_1_PATH}")]
-        S2[("Service 2<br/>${SERVICE_2_PATH}")]
-    end
-
-    %% Main flow
+    
     USER -->|HTTPS| NGINX
-    NGINX -->|/spark/| H1
-    NGINX -->|/jupyter/| H2
+    NGINX -->|/service1/| SVC1
+    NGINX -->|/service2/| SVC2
+    NGINX -->|/service3/| SVC3
     
-    %% Proxy routing
-    NGINX -->|proxy_pass| SM
-    NGINX -->|proxy_pass| JP
-    
-    %% URL rewriting
-    SM -.->|sub_filter| S1
-    JP -.->|sub_filter| S2
-
-    classDef proxyNode fill:#4CAF50,stroke:#388E3C,color:#fff
-    classDef serviceNode fill:#FF9800,stroke:#F57C00,color:#fff
-    classDef userNode fill:#2196F3,stroke:#1976D2,color:#fff
-    classDef pathNode fill:#9C27B0,stroke:#7B1FA2,color:#fff
-
-    class NGINX proxyNode
-    class SM,JP serviceNode
-    class USER userNode
-    class S1,S2 pathNode
-    class H1,H2 pathNode
+    style NGINX fill:#4CAF50,stroke:#333,stroke-width:2px
+    style USER fill:#2196F3,stroke:#333,stroke-width:2px
+    style SVC1 fill:#FF9800,stroke:#333,stroke-width:2px
+    style SVC2 fill:#FF9800,stroke:#333,stroke-width:2px
+    style SVC3 fill:#FF9800,stroke:#333,stroke-width:2px
 ```
 
- # 🏗️ Technology Stack
- ```bash
- | Component        | Version      | Purpose                             |
-| ---------------- | ------------ | ----------------------------------- |
-| **Apache Spark** | 3.5.0        | Distributed computing engine        |
-| **Hadoop**       | 3.3.4        | Distributed storage (via Spark)     |
-| **Jupyter Lab**  | 4.0.7        | Interactive development environment |
-| **Python**       | 3.9          | Primary programming language        |
-| **Scala**        | 2.12.15      | JVM language support via Almond     |
-| **Apache Livy**  | 0.7.1        | REST interface for Spark            |
-| **SparkMagic**   | Latest       | Jupyter kernel for Spark            |
-| **Almond**       | 0.14.0-RC19  | Scala kernel for Jupyter            |
-| **Java**         | 11 (OpenJDK) | JVM runtime                         |
- ```
- 
-# 🌐 Network Architecture
-### Container Network Configuration
-* Network Name: spark-jupyter-scala_spark-net
-* Network Driver: Bridge
-* Subnet: 172.25.0.0/16
-* Gateway: 172.25.0.1
 
-##### IP Address Assignment
-```bash
-| Service        | Container Name | IP Address | Exposed Ports |
-| -------------- | -------------- | ---------- | ------------- |
-| Spark Master   | spark-master   | 172.25.0.2 | 7077, 8080    |
-| Spark Worker 1 | spark-worker-1 | 172.25.0.3 | 8081          |
-| Spark Worker 2 | spark-worker-2 | 172.25.0.4 | 8082          |
-| Livy Server    | livy-server    | 172.25.0.5 | 8998          |
-| Jupyter Lab    | jupyter-spark  | 172.25.0.6 | 8888, 4040    |
+# Configuration
+.env file example
+```batch
+# Nginx Configuration
+APP_PORT=8888
+APP_SERVICE_NAME=jupyter-spark
+NETWORK_NAME=spark-jupyter-scala_spark-net
+
+# Number of services to proxy
+SERVICE_COUNT=2
+
+# Service 1
+SERVICE_1_PATH=/jupyter
+SERVICE_1_NAME=jupyter-spark
+SERVICE_1_PORT=8888
+
+# Service 2  
+SERVICE_2_PATH=/spark
+SERVICE_2_NAME=spark-master
+SERVICE_2_PORT=8080
 ```
 
-##### Service Discovery
-All containers can communicate using container names as hostnames due to Docker's embedded DNS server. External access is provided through port mapping to the host machine.
-
-# Quick Start
-### Prerequisites
-* Docker Engine 20.10+
-* Docker Compose 2.0+
-* 8GB+ RAM recommended
-* 10GB+ free disk space
-
-##### Option 1: Build from Source
-```bash
-# Clone the repository
-git clone https://github.com/ThatoK3/spark-jupyter-scala.git
-cd spark-jupyter-scala
-
-# Start the cluster
-./setup.sh
-
-# Or manually:
-docker compose up -d
-```
-
-##### Option 2: Pull from DockerHub 
-```bash
-# Use the pre-built images
-docker compose -f docker-compose.pull.yml up -d
-```
-
-### Access Services
-* Jupyter Lab: http://localhost:8888/lab
-* Spark Master UI: http://localhost:8080
-* Spark Worker 1 UI: http://localhost:8081
-* Spark Worker 2 UI: http://localhost:8082
-* Livy Server: http://localhost:8998
-* Spark Application UI: http://localhost:4040
-
-# 📁 Project Structure
-```bash
-spark-jupyter-scala/
-├── Dockerfile.jupyter          # Jupyter with Python, Scala, SparkMagic
-├── Dockerfile.livy             # Apache Livy server
-├── Dockerfile.spark            # Spark master/worker base image
-├── docker-compose.yml          # Development compose file
-├── docker-compose.pull.yml     # Production compose file (DockerHub)
-├── setup.sh                    # Quick setup script
-├── .env                        # Environment configuration
-├── config/                     # Configuration files
-│   ├── config.json             # SparkMagic basic config
-│   ├── jupyter_server_config.py # Jupyter server settings
-│   ├── livy.conf               # Livy server configuration
-│   └── sparkmagic_config.json  # SparkMagic detailed config
-├── data/                       # Shared data directory
-├── notebooks/                  # Jupyter notebooks
-│   └── example.ipynb          # Example notebook
-└── scripts/                    # Startup scripts
-    ├── init-spark.sh          # Spark master/worker startup
-    ├── start-jupyter.sh       # Jupyter startup script
-    └── start-jupyter-final.sh # Working Jupyter script
-```
-
-# 🔧 Configuration
-Environment Variables (.env)
-```bash
-# Spark Configuration
-SPARK_MASTER_HOST=spark-master
-SPARK_MASTER_PORT=7077
-SPARK_WORKER_CORES=2
-SPARK_WORKER_MEMORY=2g
-SPARK_DRIVER_MEMORY=1g
-SPARK_EXECUTOR_MEMORY=1g
-
-# Jupyter Configuration
-JUPYTER_PORT=8888
-JUPYTER_TOKEN=scala-spark-2024
-JUPYTER_MEMORY_LIMIT=4g
-JUPYTER_WORK_DIR=/home/jovyan/work
-
-# Network Configuration
-NETWORK_NAME=spark-network
-SUBNET=172.25.0.0/16
-```
-
-### Jupyter Server Configuration
-The Jupyter server is configured with:
-* IP Binding: 0.0.0.0 (all interfaces)
-* Authentication: Disabled for easy access
-* CORS: Enabled for cross-origin requests
-* Extensions: JupyterLab and Jupyter-Spark enabled
-* Working Directory: /home/jovyan/work
-
-### SparkMagic Configuration
-SparkMagic is pre-configured to connect to:
-* Livy Server: http://livy-server:8998
-* Spark Master: spark://spark-master:7077
-* Authentication: None (disabled)
-* Session Memory: 1GB driver, 1GB executor
-* Cores: 2 executor cores
-
-# Usage Examples
-### Python with PySpark
-```
-# Create a new Python notebook
-import pyspark
-from pyspark.sql import SparkSession
-
-# Create Spark session
-spark = SparkSession.builder \
-    .appName("MyApp") \
-    .master("spark://spark-master:7077") \
-    .getOrCreate()
-
-# Create sample data
-data = [("Alice", 25), ("Bob", 30), ("Charlie", 35)]
-df = spark.createDataFrame(data, ["name", "age"])
-df.show()
-
-spark.stop()
-```
-
-### Scala with Almond Kernel
-```scala
-// Create a new Scala notebook
-import $ivy.`org.apache.spark::spark-sql:3.5.0`
-import org.apache.spark.sql.SparkSession
-
-val spark = SparkSession.builder()
-  .appName("ScalaApp")
-  .master("spark://spark-master:7077")
-  .getOrCreate()
-
-val data = Seq(("Alice", 25), ("Bob", 30), ("Charlie", 35))
-val df = spark.createDataFrame(data).toDF("name", "age")
-df.show()
-
-spark.stop()
-```
-
-### SparkMagic with Livy
-```python
-# In a Python notebook
-%load_ext sparkmagic.magics
-
-# Create Spark session via Livy
-%spark add -s mysession -u http://livy-server:8998 -k python
-
-# Execute Spark code
-%%spark
-import pandas as pd
-df = pd.DataFrame({'name': ['Alice', 'Bob'], 'age': [25, 30]})
-df.show()
-
-# Clean up
-%spark cleanup
-```
-
-# Performance Tuning
-### Memory Configuration
-Adjust memory settings in .env file:
-```bash
-SPARK_WORKER_MEMORY=4g      # Worker memory
-SPARK_DRIVER_MEMORY=2g      # Driver memory  
-SPARK_EXECUTOR_MEMORY=2g    # Executor memory
-JUPYTER_MEMORY_LIMIT=8g     # Jupyter container memory
-```
-
-### CPU Configuration
-```bash
-SPARK_WORKER_CORES=4        # CPU cores per worker
-```
-
-### Network Performance
-* All containers use the same Docker bridge network for optimal internal communication
-* External ports are mapped only for necessary services
-* Consider using Docker Swarm or Kubernetes for production scaling
-
-# Security Considerations
-### Current Setup (Development)
-* Authentication disabled for easy access
-* All services exposed on localhost
-* Token-based auth disabled in Jupyter
-
-### Production Recommendations
-* Enable Jupyter authentication: Set JUPYTER_TOKEN to a strong password
-* Use reverse proxy (nginx) with SSL
-* Implement network policies
-* Enable Spark authentication
-* Use secrets management for credentials
-* Consider VPN or private network access
-
-# 🐳 Docker Images
-### Pre-built Images (DockerHub)
-```bash
-# Pull and run from DockerHub
-docker pull thatojoe/spark-master:1.0.0
-docker pull thatojoe/spark-worker:1.0.0
-docker pull thatojoe/livy:1.0.0
-docker pull thatojoe/jupyter-spark:1.0.0
-```
-
-### Building Custom Images
-```bash
-# Build all images
-docker compose build
-
-# Build specific service
-docker compose build jupyter
-
-# Tag for your registry
-docker tag spark-jupyter-scala-jupyter:latest your-registry/jupyter-spark:custom
-```
-
-# 🙏 Acknowledgments
-* Apache Spark community for the excellent distributed computing framework
-* Jupyter Project for the interactive computing environment
-* Almond team for Scala kernel support
-* Docker for containerization platform
+#### Each service needs:
+* **PATH*: URL path (e.g., /jupyter)
+* **NAME*: Docker service name
+* **PORT*: Internal port number
 
 
-
- 
- 
+# How It Works
+* Template Processing: create_config.py reads .env and generates nginx.conf
+* SSL Generation: Self-signed certificates for HTTPS testing
+* Path Routing: Nginx routes based on URL paths (/service1/, /service2/)
+* URL Rewriting: sub_filter fixes internal URLs to include proxy paths
+* Service Proxy: Routes requests to appropriate Docker services
